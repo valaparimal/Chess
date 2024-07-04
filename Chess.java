@@ -1,13 +1,24 @@
+import java.io.File;
 import java.util.Stack;
 
 import javafx.application.Application;
+import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.scene.Cursor;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.Background;
+import javafx.scene.layout.Border;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
+import javafx.scene.media.Media;
+import javafx.scene.media.MediaPlayer;
+import javafx.scene.media.MediaView;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.Shape;
@@ -17,6 +28,8 @@ import javafx.stage.Stage;
 
 public class Chess extends Application{
 
+    private Stage currentStage;
+    private Button playButton;
     private StackPane mainPane;
     private GridPane chessBord;
     private StackPane[][] oneBox;
@@ -24,18 +37,114 @@ public class Chess extends Application{
     private Text[][] texts;
     private String[] black= {"♜","♞","♝","♚","♛","♟"};
     private String[] white = {"♖","♘","♗","♔","♕","♙"};
-    private Stack<String> armyContainer = new Stack<String>();
-    private boolean[][] canArmyMove = new boolean[8][8];
-    private boolean[][] canArmyAttack = new boolean[8][8];
+    private Stack<String> armyContainer ;
+    private boolean[][] canArmyMove;
+    private boolean[][] canArmyAttack;
     private boolean isContinueGame;
     private Text result;
     private HBox hBox = new HBox();
     private boolean continueGame;
+    private static int[] storeIndexOfChackedKing;
+    private String backgroundImagePath = "C:\\java\\JavaFx\\src\\ChessBackground(1).jpg";
+    private String spinnerSoundString ="C:\\Game\\Zero-Chokadi\\Crystal_Piano.m4a";
+    private String walkSoundString ="C:\\Game\\Zero-Chokadi\\Fade_In.m4a";
+    private Media sound = new Media(new File(spinnerSoundString).toURI().toString());
+    private MediaPlayer soundPlayer;
+    private MediaView soundContainerVeiw = new MediaView(soundPlayer);
+
     public static void main(String args[]){
         Application.launch(args);
     }
 
     public void start(Stage primaryStage){
+
+        currentStage=primaryStage;
+        createStartButton();
+
+        primaryStage.setScene(scene);
+        primaryStage.setTitle("Chess");
+        primaryStage.setResizable(false);
+        primaryStage.setAlwaysOnTop(true);
+        primaryStage.show();
+
+    }
+
+    public void createStartButton(){
+
+        playButton = new Button();
+        playButton.setText("Play");
+        playButton.setFont(Font.font(40));
+        playButton.setBackground(Background.fill(Color.BROWN));
+        playButton.setTextFill(Color.WHITE);
+        playButton.setOpacity(0.9);
+        
+        playButton.setBorder(Border.stroke(Color.BLACK));
+        playButton.setCursor(Cursor.HAND);
+
+        Image backgroundImage = new Image(new File(backgroundImagePath).toURI().toString());
+        ImageView backgrouImageView = new ImageView(backgroundImage);
+        backgrouImageView.setFitHeight(700);
+        backgrouImageView.setFitWidth(700);
+        backgrouImageView.setOpacity(0.7);
+
+        StackPane buttonContainerStackPane = new StackPane(backgrouImageView,playButton,soundContainerVeiw);
+        buttonContainerStackPane.setBackground(Background.fill(Color.LIGHTYELLOW));
+
+        scene = new Scene(buttonContainerStackPane,800,800);
+        currentStage.setScene(scene);
+
+        playButton.setOnAction(new EventHandler<ActionEvent>(){
+            public void handle(ActionEvent arg0){
+
+                sound = new Media(new File(spinnerSoundString).toURI().toString());
+                soundPlayer = new MediaPlayer(sound);
+                soundPlayer.play();
+                new Thread(()->{
+                    for(int i=0 ; i<3000 ; i+=100)
+                    {
+                        playButton.setRotate(i); 
+                        backgrouImageView.setRotate(-i);
+                        try {
+                            Thread.sleep(30);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    playButton.setFont(Font.font(0));
+                    soundPlayer.stop();
+                }).start();
+
+                playButton.setOnMouseExited(new EventHandler<MouseEvent>(){
+                    public void handle(MouseEvent arg0){
+                        playChess(currentStage);
+                    }
+                });
+            }
+        });
+
+
+        playButton.setOnMouseEntered(new EventHandler<MouseEvent>() {
+            public void handle(MouseEvent arg0)
+            {
+                playButton.setFont(Font.font(38));
+            }
+        });
+
+        playButton.setOnMouseExited(new EventHandler<MouseEvent>() {
+            public void handle(MouseEvent arg0)
+            {
+                playButton.setFont(Font.font(40));
+            }
+        });
+    }
+
+    public void playChess(Stage newStage){
+
+        armyContainer = new Stack<String>();
+        canArmyMove = new boolean[8][8];
+        canArmyAttack = new boolean[8][8];
+        storeIndexOfChackedKing = new int[2];
+        storeIndexOfChackedKing[0]=storeIndexOfChackedKing[1]=-1;
 
         mainPane = new StackPane();
         chessBord = new GridPane();
@@ -128,12 +237,10 @@ public class Chess extends Application{
             texts[6][i].setText("♙");
         }
         
-        mainPane.getChildren().addAll(chessBord,result,hBox);
+        mainPane.getChildren().addAll(chessBord,result,hBox,soundContainerVeiw);
         scene = new Scene(mainPane,800,800);
-        primaryStage.setTitle("Chess");
-        primaryStage.setScene(scene);
-        primaryStage.setResizable(false);
-        primaryStage.show();
+        newStage.setScene(scene);
+        newStage.show();
 
         
 
@@ -153,10 +260,14 @@ public class Chess extends Application{
                 final int l=j;
 
                 oneBox[k][l].setOnMouseClicked(new EventHandler<MouseEvent>() {
+                    @SuppressWarnings("null")
                     public void handle(MouseEvent arg0)
                     {
                             if(((Text) oneBox[k][l].getChildren().get(1)).getText() == "o" || ((Shape) oneBox[k][l].getChildren().get(0)).getFill().equals(Color.YELLOW))
                             {
+                                sound = new Media(new File(walkSoundString).toURI().toString());
+                                soundPlayer = new MediaPlayer(sound);
+                                soundPlayer.play();
                                 
                                 for(int i=0; i<8 ; i++)
                                 {
@@ -181,7 +292,7 @@ public class Chess extends Application{
                                             {
                                                 givePowerToPown(7,l,black);
                                             }
-System.out.println("power given");
+
                                             i=8;
                                             break;
                                         }
@@ -197,12 +308,20 @@ System.out.println("power given");
                                     {
                                         try {
                                             // see, is there check for black?
-                                            if(moveCkeck(false, white))
+                                            if(moveCkeck(false,true ,white))
                                             {
-                                                circleClean(false);
-                                                colorClean(false);
+                                                System.out.println("checked");
+                                                try {
+                                                    ((Shape) oneBox[storeIndexOfChackedKing[0]][storeIndexOfChackedKing[1]].getChildren().get(0)).setFill(Color.RED);
+                                                    storeIndexOfChackedKing[0]=storeIndexOfChackedKing[1]=(Integer) null;
+                                                    circleClean(false);
+                                                    colorClean(false);
+                                                } catch (Exception e) {
+                                                    System.out.println(e.getMessage());
+                                                }
                                                 if(!defanceToChack(black, white))
                                                 {
+                                                    System.out.println("checkmate");
                                                     gameOver(white);
                                                 }
                                             }
@@ -252,13 +371,22 @@ System.out.println("power given");
                                     // see, is there check for white?
 
                                     try {
-                                        if(moveCkeck(false, black))
+                                        if(moveCkeck(false, true,black))
                                         {
-                                            circleClean(false);
-                                            colorClean(false);
+                                            System.out.println("chcked");
+                                            
+                                            try {
+                                                ((Shape) oneBox[storeIndexOfChackedKing[0]][storeIndexOfChackedKing[1]].getChildren().get(0)).setFill(Color.RED);
+                                                storeIndexOfChackedKing[0]=storeIndexOfChackedKing[1]=(Integer) null;
+                                                circleClean(false);
+                                                colorClean(false);
+                                            } catch (Exception e) {
+                                                System.out.println(e.getMessage());
+                                            }
     
                                             if(!defanceToChack(white,black))
                                             {
+                                                System.out.println("checkmate");
                                                 gameOver(black);
                                             }
                                         }
@@ -302,24 +430,24 @@ System.out.println("power given");
                             else
                             {
                                 circleClean(false);
-                                colorClean(Color.YELLOW,Color.RED);
+                                colorClean(false);
                                 
                                 texts[k][l].setOpacity(1);
 
                                 try {
                                     if(((Text) oneBox[k][l].getChildren().get(1)).getText() == "♟")
                                     {
-                                        blackpown(true,k,l);
+                                        blackpown(true,true,k,l);
                                         texts[k][l].setOpacity(1);
                                     }
                                     else if(((Text) oneBox[k][l].getChildren().get(1)).getText() == "♜" || ((Text) oneBox[k][l].getChildren().get(1)).getText()=="♖")
                                     {
                                         if(((Text) oneBox[k][l].getChildren().get(1)).getText() == "♜")
                                         {
-                                            rook(true,k, l,white);
+                                            rook(true,true,k, l,white);
                                         }
                                         else{
-                                            rook(true,k, l, black);
+                                            rook(true,true,k, l, black);
                                         }
                                         texts[k][l].setOpacity(1);
                                     }
@@ -327,11 +455,11 @@ System.out.println("power given");
                                     {
                                         if(((Text) oneBox[k][l].getChildren().get(1)).getText() == "♞")
                                         {
-                                            horse(true,k, l, white);
+                                            horse(true,true,k, l, white);
                                         }
                                         else
                                         {
-                                            horse(true,k, l, black);
+                                            horse(true,true,k, l, black);
                                         }
                                         texts[k][l].setOpacity(1);
                                     }
@@ -339,11 +467,11 @@ System.out.println("power given");
                                     {
                                         if(((Text) oneBox[k][l].getChildren().get(1)).getText() == "♝")
                                         {
-                                            camel(true,k, l, white);
+                                            camel(true,true,k, l, white);
                                         }
                                         else
                                         {
-                                            camel(true,k, l, black);
+                                            camel(true,true,k, l, black);
                                         }
                                         texts[k][l].setOpacity(1);
                                     }
@@ -363,19 +491,24 @@ System.out.println("power given");
                                     {
                                         if(((Text) oneBox[k][l].getChildren().get(1)).getText() == "♛" )
                                         {
-                                            queen(true,k, l,white);
+                                            queen(true,true,k, l,white);
                                         }
                                         else{
-                                            queen(true,k, l,black);
+                                            queen(true,true,k, l,black);
                                         }
                                         texts[k][l].setOpacity(1);
                                     }
                                     else if(((Text) oneBox[k][l].getChildren().get(1)).getText() == "♙")
                                     {
-                                        whitepown(true,k, l);
+                                        whitepown(true,true,k, l);
                                         texts[k][l].setOpacity(1);
                                     }
                                 } catch (ArrayIndexOutOfBoundsException e) {}
+
+                                try {
+                                    ((Shape) oneBox[storeIndexOfChackedKing[0]][storeIndexOfChackedKing[1]].getChildren().get(0)).setFill(Color.RED);
+                                    storeIndexOfChackedKing[0]=storeIndexOfChackedKing[1]=-1;
+                                } catch (Exception e) {}
                             }
 
                     }
@@ -404,7 +537,6 @@ System.out.println("power given");
             }
         });
     }
-
 
     // functions
 
@@ -512,7 +644,7 @@ System.out.println("power given");
     {
         boolean move;
         // see , if there is check for me then don't move
-        if(moveCkeck(false,oppoArmy))
+        if(moveCkeck(false,false,oppoArmy))
         {
             move=false;
         }
@@ -525,7 +657,7 @@ System.out.println("power given");
         return move;
     }
 
-    public boolean isChackORAttack(boolean saveKing,final int k , final int l , final int newk , final int newl , String[] oppoArmy)
+    public boolean isChackORAttack(boolean saveKing,boolean chackPaint,final int k , final int l , final int newk , final int newl , String[] oppoArmy)
     {
         for(int i=0 ; i<6 ; i++)
         {
@@ -542,13 +674,16 @@ System.out.println("power given");
                     if(saveKing) 
                     {
                         canArmyAttack[newk][newl]=true;
-                        isContinueGame=true;
                     }
                     oneBox[newk][newl].setDisable(false);
     
                     if(i==3)
                     {
-                        ((Shape) oneBox[newk][newl].getChildren().get(0)).setFill(Color.RED);
+                        if(chackPaint)
+                        {
+                            storeIndexOfChackedKing[0]=newk;
+                            storeIndexOfChackedKing[1]=newl;
+                        }
                         return true;
                     }
                 }
@@ -560,52 +695,63 @@ System.out.println("power given");
     public boolean defanceToChack(String[] myArmy , String[] oppoArmy)
     {
         isContinueGame=false;
+        Stack<String> armyContainerStack = new Stack<String>();
         for(int i=0 ; i<8 ; i++)
         {
             for(int j=0 ; j<8 ; j++)
             {
                 for(int z = 0 ; z<6 ; z++)
                 {
+                    if(texts[i][j].getText().equals(oppoArmy[z]))armyContainerStack.push(oppoArmy[z]);
                     if(texts[i][j].getText().equals(myArmy[z]))
                     {
+                        armyContainerStack.push(myArmy[z]);
                         if(z==0)
                         {
-                            rook(true, i, j, oppoArmy);
+                            rook(true, false,i, j, oppoArmy);
                         }
                         else if(z==1)
                         {
-                            horse(true, i, j, oppoArmy);
+                            horse(true, false,i, j, oppoArmy);
                         }
                         else if (z==2) {
-                            camel(true, i, j, oppoArmy);
+                            camel(true,false, i, j, oppoArmy);
                         }
                         else if (z==3) {
                             king(i, j, oppoArmy);
                         }
                         else if(z==4)
                         {
-                            queen(true, i, j, oppoArmy);
+                            queen(true,false, i, j, oppoArmy);
                         }
                         else {
                             if(myArmy[5].equals(white[5]))
                             {
-                                whitepown(true, i, j);
+                                whitepown(true,false, i, j);
                             }
                             else{
-                                blackpown(true, i, j);
+                                blackpown(true,false, i, j);
                             }
                         }
                     }
                 }
+                System.out.println(i + " " + j+ " " +isContinueGame);
+                if (isContinueGame) {
+                    if(armyContainerStack.size()<3) continue; // if, in armyContainerStack only two value then may be it is kings
+                    return true;
+                }
             }
         }
+
+        if(armyContainerStack.size()==2)return false;
+        
         return isContinueGame;
     }
 
     // Army function
 
 
-    public boolean blackpown(boolean saveKing, int k , int l)
+    public boolean blackpown(boolean saveKing,boolean chackPaint, int k , int l)
     {
         if(((Text) oneBox[k+1][l].getChildren().get(1)).getText() == "")
         {
@@ -613,7 +759,12 @@ System.out.println("power given");
             
             if(saveKing)
             {
-                move=isChangePlace(k,l,k+1,l,white);
+                armyContainer.push(texts[k][l].getText());
+                texts[k+1][l].setText(texts[k][l].getText());
+                texts[k][l].setText("");
+                move=isThisRightMove(white);
+                texts[k+1][l].setText("");
+                texts[k][l].setText(armyContainer.pop());
             }
 
             if(move)
@@ -621,13 +772,23 @@ System.out.println("power given");
                 if(saveKing)
                 {
                     canArmyMove[k+1][l]=true;
+                    isContinueGame=true;
                 }
                 if(k==1)
                 {
                     if(((Text) oneBox[k+2][l].getChildren().get(1)).getText() == "")
                     {
-                        if (saveKing) {
-                            canArmyMove[k+2][l]=true;
+                        if (saveKing) {                       
+                            armyContainer.push(texts[k][l].getText());
+                            texts[k+2][l].setText(texts[k][l].getText());
+                            texts[k][l].setText("");
+                            move=isThisRightMove(white);
+                            texts[k+2][l].setText("");
+                            texts[k][l].setText(armyContainer.pop());
+
+                            if (move) {
+                                canArmyMove[k+2][l]=true;
+                            }
                         }
                     }
                 }
@@ -642,7 +803,15 @@ System.out.println("power given");
                     boolean move=true;
                     if(saveKing)
                     {
-                        move=isChangePlace(k,l,k+1,l-1,white);
+                        armyContainer.push(texts[k][l].getText());
+                        armyContainer.push(texts[k+1][l-1].getText());
+                        texts[k+1][l-1].setText(texts[k][l].getText());
+                        texts[k][l].setText("");
+
+                        move=isThisRightMove(white);
+                        
+                        texts[k+1][l-1].setText(armyContainer.pop());
+                        texts[k][l].setText(armyContainer.pop());
                     }
 
                     if(move)
@@ -654,7 +823,10 @@ System.out.println("power given");
                         oneBox[k+1][l-1].setDisable(false);
                         if(i==3)
                         {
-                            ((Shape) oneBox[k+1][l-1].getChildren().get(0)).setFill(Color.RED);
+                            if (chackPaint) {
+                                storeIndexOfChackedKing[0]=k+1;
+                                storeIndexOfChackedKing[1]=l-1;
+                            }
                             return true;
                         }
                     }
@@ -667,7 +839,15 @@ System.out.println("power given");
                     boolean move=true;
                     if(saveKing)
                     {
-                        move=isChangePlace(k,l,k+1,l+1,white);
+                        armyContainer.push(texts[k][l].getText());
+                        armyContainer.push(texts[k+1][l+1].getText());
+                        texts[k+1][l+1].setText(texts[k][l].getText());
+                        texts[k][l].setText("");
+
+                        move=isThisRightMove(white);
+                        
+                        texts[k+1][l+1].setText(armyContainer.pop());
+                        texts[k][l].setText(armyContainer.pop());
                     }
 
                     if(move)
@@ -679,7 +859,10 @@ System.out.println("power given");
                         oneBox[k+1][l+1].setDisable(false);
                         if(i==3)
                         {
-                            ((Shape) oneBox[k+1][l+1].getChildren().get(0)).setFill(Color.RED);
+                            if (chackPaint) {
+                                storeIndexOfChackedKing[0]=k+1;
+                                storeIndexOfChackedKing[1]=l+1;
+                            }
                             return true;
                         }
                     }
@@ -697,7 +880,7 @@ System.out.println("power given");
         return false;                        
     }
 
-    public boolean rook(boolean saveKing, int k , int l,String[] oppoArmy)
+    public boolean rook(boolean saveKing,boolean chackPaint, int k , int l,String[] oppoArmy)
     {
         try {
             int down=k;
@@ -713,7 +896,7 @@ System.out.println("power given");
                     }
                 }
             }
-            if(isChackORAttack(saveKing,k,l,down,l,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
+            if(isChackORAttack(saveKing,chackPaint,k,l,down,l,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
             {
                 return true;
             }
@@ -733,7 +916,7 @@ System.out.println("power given");
                     }
                 }
             }
-            if(isChackORAttack(saveKing,k,l,up,l,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
+            if(isChackORAttack(saveKing,chackPaint,k,l,up,l,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
             {
                 return true;
             }
@@ -753,7 +936,7 @@ System.out.println("power given");
                     }
                 }
             }
-            if(isChackORAttack(saveKing,k,l,k,right,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
+            if(isChackORAttack(saveKing,chackPaint,k,l,k,right,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
             {
                 return true;
             }
@@ -772,7 +955,7 @@ System.out.println("power given");
                     }
                 }
             }
-            if(isChackORAttack(saveKing,k,l,k,left,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
+            if(isChackORAttack(saveKing,chackPaint,k,l,k,left,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
             {
                 return true;
             }
@@ -789,7 +972,7 @@ System.out.println("power given");
         return false;
     }
 
-    public boolean horse(boolean saveKing , int k , int l,String[] oppoArmy)
+    public boolean horse(boolean saveKing ,boolean chackPaint, int k , int l,String[] oppoArmy)
     {
         try {
             int down=k+2;
@@ -808,7 +991,7 @@ System.out.println("power given");
             }
             else
             {
-                if(isChackORAttack(saveKing,k,l,down,downR,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
+                if(isChackORAttack(saveKing,chackPaint,k,l,down,downR,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
                 {
                     return true;
                 }
@@ -832,7 +1015,7 @@ System.out.println("power given");
             }
             else
             {
-                if(isChackORAttack(saveKing,k,l,up,upR,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
+                if(isChackORAttack(saveKing,chackPaint,k,l,up,upR,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
                 {
                     return true;
                 }
@@ -856,7 +1039,7 @@ System.out.println("power given");
             }
             else
             {
-                if(isChackORAttack(saveKing,k,l,down,downL,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
+                if(isChackORAttack(saveKing,chackPaint,k,l,down,downL,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
                 {
                     return true;
                 }
@@ -879,7 +1062,7 @@ System.out.println("power given");
             }
             else
             {
-                if(isChackORAttack(saveKing,k,l,up,upL,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
+                if(isChackORAttack(saveKing,chackPaint,k,l,up,upL,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
                 {
                     return true;
                 }
@@ -904,7 +1087,7 @@ System.out.println("power given");
             }
             else
             {
-                if(isChackORAttack(saveKing,k,l,rightU,right,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
+                if(isChackORAttack(saveKing,chackPaint,k,l,rightU,right,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
                 {
                     return true;
                 }
@@ -927,7 +1110,7 @@ System.out.println("power given");
             }
             else
             {
-                if(isChackORAttack(saveKing,k,l,rightD,right,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
+                if(isChackORAttack(saveKing,chackPaint,k,l,rightD,right,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
                 {
                     return true;
                 }
@@ -950,7 +1133,7 @@ System.out.println("power given");
             }
             else
             {
-                if(isChackORAttack(saveKing,k,l,leftU,left,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
+                if(isChackORAttack(saveKing,chackPaint,k,l,leftU,left,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
                 {
                     return true;
                 }
@@ -973,7 +1156,7 @@ System.out.println("power given");
             }
             else
             {    
-                if(isChackORAttack(saveKing,k,l,leftD,left,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
+                if(isChackORAttack(saveKing,chackPaint,k,l,leftD,left,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
                 {
                     return true;
                 }
@@ -991,7 +1174,7 @@ System.out.println("power given");
         return false;
     }
 
-    public boolean camel (boolean saveKing ,int k , int l , String[] oppoArmy)
+    public boolean camel (boolean saveKing ,boolean chackPaint,int k , int l , String[] oppoArmy)
     {
         try {
             int down=k;
@@ -1007,7 +1190,7 @@ System.out.println("power given");
                 }
             }
             
-            if(isChackORAttack(saveKing,k,l,down,downR,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
+            if(isChackORAttack(saveKing,chackPaint,k,l,down,downR,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
             {
                 return true;
             }
@@ -1027,7 +1210,7 @@ System.out.println("power given");
                     }
                 }
             }
-            if(isChackORAttack(saveKing,k,l,up,upR,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
+            if(isChackORAttack(saveKing,chackPaint,k,l,up,upR,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
             {
                 return true;
             }
@@ -1047,7 +1230,7 @@ System.out.println("power given");
                     }
                 }
             }
-            if(isChackORAttack(saveKing,k,l,down,downL,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
+            if(isChackORAttack(saveKing,chackPaint,k,l,down,downL,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
             {
                 return true;
             }
@@ -1067,7 +1250,7 @@ System.out.println("power given");
                     }
                 }
             }
-            if(isChackORAttack(saveKing,k,l,up,upL,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
+            if(isChackORAttack(saveKing,chackPaint,k,l,up,upL,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
             {
                 return true;
             }
@@ -1145,7 +1328,7 @@ System.out.println("power given");
             ((Text) oneBox[newk][newl].getChildren().get(1)).setText(texts[k][l].getText());
             ((Text) oneBox[k][l].getChildren().get(1)).setText("");
 
-            if(!moveCkeck(false, oppoArmy))
+            if(!moveCkeck(false, false,oppoArmy))
             {
                 canArmyMove[newk][newl]=true;
                 isContinueGame=true;
@@ -1155,7 +1338,7 @@ System.out.println("power given");
                 ((Text) oneBox[newk][newl].getChildren().get(1)).setText("");
             }
             ((Text) oneBox[k][l].getChildren().get(1)).setText(armyContainer.pop());
-            colorClean(Color.YELLOW, Color.RED);
+            colorClean(false);
             
         }
         for(int temp=0; temp<6 ; temp++)
@@ -1168,13 +1351,13 @@ System.out.println("power given");
                 ((Text) oneBox[k][l].getChildren().get(1)).setText("");
 
                 boolean willDath=false;
-                if(moveCkeck(false, oppoArmy))
+                if(moveCkeck(false,false, oppoArmy))
                 {
                     willDath=true;
                 }
                 texts[newk][newl].setText(armyContainer.pop());
                 texts[k][l].setText(armyContainer.pop());
-                colorClean(Color.YELLOW, Color.RED);
+                colorClean(false);
                 if(!willDath)
                 {
                     isContinueGame=true;
@@ -1185,7 +1368,7 @@ System.out.println("power given");
         }
     }
 
-    public boolean moveCkeck(boolean saveKing ,String[] oppoArmy)
+    public boolean moveCkeck(boolean saveKing ,boolean chackPaint,String[] oppoArmy)
     {
         for(int i=0; i<8 ; i++)
         {
@@ -1199,7 +1382,7 @@ System.out.println("power given");
                         {
                             if(oppoArmy[0].equals(white[0]))//if true then color of rook is white, oppArmy for rook is black
                             {
-                                if(rook(saveKing,i,j,black))
+                                if(rook(saveKing,chackPaint,i,j,black))
                                 {
                                     System.out.println("rook");
                                     return true;
@@ -1207,7 +1390,7 @@ System.out.println("power given");
                             }
                             else
                             {
-                                if(rook(saveKing,i,j,white))
+                                if(rook(saveKing,chackPaint,i,j,white))
                                 {
                                     System.out.println("rook");
                                     return true;
@@ -1218,7 +1401,7 @@ System.out.println("power given");
                         {
                             if(oppoArmy[1].equals(white[1]))//if true then color of horse is white, oppArmy for horse is black
                             {
-                                if(horse(saveKing,i,j,black))
+                                if(horse(saveKing,chackPaint,i,j,black))
                                 {
                                     System.out.println("horse");
                                     return true;
@@ -1226,7 +1409,7 @@ System.out.println("power given");
                             }
                             else
                             {
-                                if(horse(saveKing,i,j,white))
+                                if(horse(saveKing,chackPaint,i,j,white))
                                 {
                                     System.out.println("horse");
                                     return true;
@@ -1237,7 +1420,7 @@ System.out.println("power given");
                         {
                             if(oppoArmy[2].equals(white[2]))//if true then color of camel is white, oppArmy for camel is black
                             {
-                                if(camel(saveKing,i,j,black))
+                                if(camel(saveKing,chackPaint,i,j,black))
                                 {
                                     System.out.println("camel");
                                     return true;
@@ -1245,7 +1428,7 @@ System.out.println("power given");
                             }
                             else
                             {
-                                if(camel(saveKing,i,j,white))
+                                if(camel(saveKing,chackPaint,i,j,white))
                                 {
                                     System.out.println("camel");
                                     return true;
@@ -1275,14 +1458,14 @@ System.out.println("power given");
                         {
                             if(oppoArmy[4].equals(white[4])) // if true then color of queen is white. so,oppoarmy is black
                             {
-                                if(queen(saveKing,i,j,black))
+                                if(queen(saveKing,chackPaint,i,j,black))
                                 {
                                     System.out.println("queen");
                                     return true;
                                 }
                             }
                             else{
-                                if(queen(saveKing,i,j,white))
+                                if(queen(saveKing,chackPaint,i,j,white))
                                 {
                                     System.out.println("queen");
                                     return true;
@@ -1291,7 +1474,7 @@ System.out.println("power given");
                         }
                         else if(oppoArmy[5].equals(white[5])) // if true then color of oppopown is white
                         {
-                            if(whitepown(saveKing,i, j))
+                            if(whitepown(saveKing,chackPaint,i, j))
                             {
                                 System.out.println("whitepown");
                                 return true;
@@ -1299,7 +1482,7 @@ System.out.println("power given");
                         }
                         else if(oppoArmy[5].equals(black[5]))
                         {
-                            if(blackpown(saveKing,i, j))
+                            if(blackpown(saveKing,chackPaint,i, j))
                             {
                                 System.out.println("blackpown");
                                 return true;
@@ -1343,7 +1526,7 @@ System.out.println("power given");
         return false;
     }
 
-    public boolean queen(boolean saveKing,int k , int  l,String[] oppoArmy)
+    public boolean queen(boolean saveKing,boolean chackPaint,int k , int  l,String[] oppoArmy)
     {
         try {
             int down=k;
@@ -1358,7 +1541,7 @@ System.out.println("power given");
                     }
                 }
             }
-            if(isChackORAttack(saveKing,k,l,down,l,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
+            if(isChackORAttack(saveKing,chackPaint,k,l,down,l,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
             {
                 return true;
             }
@@ -1377,7 +1560,7 @@ System.out.println("power given");
                     }
                 }
             }
-            if(isChackORAttack(saveKing,k,l,up,l,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
+            if(isChackORAttack(saveKing,chackPaint,k,l,up,l,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
             {
                 return true;
             }
@@ -1397,7 +1580,7 @@ System.out.println("power given");
                     }
                 }
             }
-            if(isChackORAttack(saveKing,k,l,k,right,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
+            if(isChackORAttack(saveKing,chackPaint,k,l,k,right,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
             {
                 return true;
             }
@@ -1417,7 +1600,7 @@ System.out.println("power given");
                     }
                 }
             }
-            if(isChackORAttack(saveKing,k,l,k,left,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
+            if(isChackORAttack(saveKing,chackPaint,k,l,k,left,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
             {
                 return true;
             }
@@ -1438,7 +1621,7 @@ System.out.println("power given");
                     }
                 }
             }
-            if(isChackORAttack(saveKing,k,l,down,downR,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
+            if(isChackORAttack(saveKing,chackPaint,k,l,down,downR,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
             {
                 return true;
             }
@@ -1459,7 +1642,7 @@ System.out.println("power given");
                     }
                 }
             }
-            if(isChackORAttack(saveKing,k,l,up,upR,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
+            if(isChackORAttack(saveKing,chackPaint,k,l,up,upR,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
             {
                 return true;
             }
@@ -1481,7 +1664,7 @@ System.out.println("power given");
                 }
                 ((Text) oneBox[down][downL].getChildren().get(1)).setText("o");
             }
-            if(isChackORAttack(saveKing,k,l,down,downL,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
+            if(isChackORAttack(saveKing,chackPaint,k,l,down,downL,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
             {
                 return true;
             }
@@ -1502,7 +1685,7 @@ System.out.println("power given");
                     }
                 }
             }
-            if(isChackORAttack(saveKing,k,l,up,upL,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
+            if(isChackORAttack(saveKing,chackPaint,k,l,up,upL,oppoArmy)) // it is return true if it give chack to oppoKing , if it will attack then paint color to yellow
             {
                 return true;
             }
@@ -1521,7 +1704,7 @@ System.out.println("power given");
         return false;
     }
 
-    public boolean whitepown(boolean saveKing ,final int k , final int l)
+    public boolean whitepown(boolean saveKing ,boolean chackPaint,final int k , final int l)
     {
         try {
             if(((Text) oneBox[k-1][l].getChildren().get(1)).getText() == "")
@@ -1542,13 +1725,22 @@ System.out.println("power given");
                 {
                     if (saveKing) {
                         canArmyMove[k-1][l]=true;
+                        isContinueGame=true;
                     }
                     if(k==6)
                     {
                         if(((Text) oneBox[k-2][l].getChildren().get(1)).getText() == "")
                         {
                             if (saveKing) {
-                                canArmyMove[k-2][l]=true;
+                                armyContainer.push(texts[k][l].getText());
+                                texts[k-2][l].setText(texts[k][l].getText());
+                                texts[k][l].setText("");
+                                move=isThisRightMove(black);
+                                texts[k-2][l].setText("");
+                                texts[k][l].setText(armyContainer.pop());
+                                if (move) {
+                                    canArmyMove[k-2][l]=true;
+                                }
                             }
                         }
                     }
@@ -1585,7 +1777,10 @@ System.out.println("power given");
                         oneBox[k-1][l-1].setDisable(false);
                         if(i==3)
                         {
-                            ((Shape) oneBox[k-1][l-1].getChildren().get(0)).setFill(Color.RED);
+                            if (chackPaint) {
+                                storeIndexOfChackedKing[0]=k-1;
+                                storeIndexOfChackedKing[1]=l-1;
+                            }
                             return true;
                         }
                     }
@@ -1598,7 +1793,15 @@ System.out.println("power given");
                     boolean move=true;
                     if(saveKing)
                     {
-                        move=isChangePlace(k,l,k-1,l+1,black);
+                        armyContainer.push(texts[k][l].getText());
+                        armyContainer.push(texts[k-1][l+1].getText());
+                        texts[k-1][l+1].setText(texts[k][l].getText());
+                        texts[k][l].setText("");
+
+                        move=isThisRightMove(black);
+                        
+                        texts[k-1][l+1].setText(armyContainer.pop());
+                        texts[k][l].setText(armyContainer.pop());
                     }
                     
                     if(move)
@@ -1611,7 +1814,10 @@ System.out.println("power given");
                         oneBox[k-1][l+1].setDisable(false);
                         if(i==3)
                         {
-                            ((Shape) oneBox[k-1][l+1].getChildren().get(0)).setFill(Color.RED);
+                            if (chackPaint) {
+                                storeIndexOfChackedKing[0]=k-1;
+                                storeIndexOfChackedKing[1]=l+1;
+                            }
                             return true;
                         }
                     }
@@ -1688,6 +1894,20 @@ System.out.println("power given");
 
     public void gameOver(String[] winArmy)
     {
+        soundPlayer.pause();
+        sound = new Media(new File(spinnerSoundString).toURI().toString());
+        soundPlayer = new MediaPlayer(sound);
+        soundPlayer.play();
+
+        Pane tempPane = new Pane();// for manage scene at end of game
+        Button closeButton = new Button("X");
+        closeButton.setFont(Font.font(30));
+        closeButton.setBackground(Background.fill(Color.LIGHTYELLOW));
+        closeButton.setBorder(Border.stroke(Color.RED));
+        closeButton.setLayoutX(720);
+        closeButton.setLayoutY(10);
+        closeButton.setCursor(Cursor.HAND);
+
         if(winArmy !=null)
         {
             if(winArmy[3].equals(white[3]))
@@ -1705,5 +1925,56 @@ System.out.println("power given");
         }
         chessBord.setDisable(true);
         chessBord.setOpacity(0.5);
+
+        tempPane.getChildren().addAll(mainPane,closeButton,soundContainerVeiw);
+        scene = new Scene(tempPane,800,800);
+        currentStage.setScene(scene);
+
+        closeButton.setOnAction(new EventHandler<ActionEvent>() {
+            public void handle(ActionEvent arg0){
+
+                sound = new Media(new File(spinnerSoundString).toURI().toString());
+                soundPlayer = new MediaPlayer(sound);
+                soundPlayer.play();
+                new Thread(()->{
+                    for(int i=0 ; i<3000 ; i+=100)
+                    {
+                        chessBord.setRotate(i);
+                        try {
+                            Thread.sleep(30);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    closeButton.setFont(Font.font(0));
+                    soundPlayer.pause();
+                }).start();
+
+                closeButton.setOnMouseExited(new EventHandler<MouseEvent>(){
+                    public void handle(MouseEvent arg0){
+                        createStartButton();
+                        System.out.println("Closed");
+                    }
+                });
+            }
+        });
+
+        closeButton.setOnMouseEntered(new EventHandler<MouseEvent>() {
+            public void handle(MouseEvent arg0){
+                closeButton.setBackground(Background.fill(Color.BROWN));
+                closeButton.setTextFill(Color.WHITE);
+                closeButton.setOpacity(0.9);
+            }
+        });
+
+        closeButton.setOnMouseExited(new EventHandler<MouseEvent>() {
+            public void handle(MouseEvent arg0){
+                closeButton.setBackground(Background.fill(Color.WHITE));
+                closeButton.setTextFill(Color.BLACK);
+                closeButton.setOpacity(1);
+            }
+        });
+
+        
     }
 }
