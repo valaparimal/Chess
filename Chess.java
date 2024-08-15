@@ -1,6 +1,7 @@
 import java.io.File;
 import java.util.Stack;
 
+import javafx.animation.RotateTransition;
 import javafx.application.Application;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
@@ -20,17 +21,20 @@ import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import javafx.scene.media.MediaView;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.Shape;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
+import javafx.scene.transform.Rotate;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 public class Chess extends Application{
 
     private Stage currentStage;
     private Button playButton;
-    private StackPane mainPane;
+    private StackPane rootPane;
     private GridPane chessBord;
     private StackPane[][] oneBox;
     private Scene scene;
@@ -46,8 +50,9 @@ public class Chess extends Application{
     private boolean continueGame;
     private static int[] storeIndexOfChackedKing;
     private String backgroundImagePath = "C:\\java\\JavaFx\\src\\ChessBackground(1).jpg";
-    private String spinnerSoundString ="C:\\Game\\Zero-Chokadi\\Crystal_Piano.m4a";
-    private String walkSoundString ="C:\\Game\\Zero-Chokadi\\Fade_In.m4a";
+    private String spinnerSoundString ="C:\\java\\JavaFx\\src\\spinnerSound.mp3";
+    private String walkSoundString ="C:\\java\\JavaFx\\src\\walkSound.mp3";
+    private String winnerSound = "C:\\Programing Languages\\Game\\Zero-Chokadi\\Crystal_Piano.m4a";
     private Media sound = new Media(new File(spinnerSoundString).toURI().toString());
     private MediaPlayer soundPlayer;
     private MediaView soundContainerVeiw = new MediaView(soundPlayer);
@@ -77,6 +82,7 @@ public class Chess extends Application{
         playButton.setBackground(Background.fill(Color.BROWN));
         playButton.setTextFill(Color.WHITE);
         playButton.setOpacity(0.9);
+        playButton.setShape(new Circle(40));
         
         playButton.setBorder(Border.stroke(Color.BLACK));
         playButton.setCursor(Cursor.HAND);
@@ -99,23 +105,31 @@ public class Chess extends Application{
                 sound = new Media(new File(spinnerSoundString).toURI().toString());
                 soundPlayer = new MediaPlayer(sound);
                 soundPlayer.play();
+                RotateTransition rotateTransition = new RotateTransition(Duration.millis(500),backgrouImageView);
+                rotateTransition.setByAngle(90); 
+                rotateTransition.setAxis(Rotate.Y_AXIS);
+                rotateTransition.play();
                 new Thread(()->{
-                    for(int i=0 ; i<3000 ; i+=100)
-                    {
-                        playButton.setRotate(i); 
-                        backgrouImageView.setRotate(-i);
                         try {
-                            Thread.sleep(30);
+                            Thread.sleep(500);
                         } catch (InterruptedException e) {
                             e.printStackTrace();
-                        }
                     }
                     playButton.setFont(Font.font(0));
-                    soundPlayer.stop();
                 }).start();
 
                 playButton.setOnMouseExited(new EventHandler<MouseEvent>(){
                     public void handle(MouseEvent arg0){
+                        
+                        new Thread(()->{
+                            try {
+                                Thread.sleep(500);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }   
+                            soundPlayer.pause();
+                        }).start();
+                        rootPane=buttonContainerStackPane;
                         playChess(currentStage);
                     }
                 });
@@ -139,14 +153,15 @@ public class Chess extends Application{
     }
 
     public void playChess(Stage newStage){
-
+        rootPane.getChildren().remove(0);
+        rootPane.getChildren().remove(0);
+        rootPane.getChildren().remove(0);
         armyContainer = new Stack<String>();
         canArmyMove = new boolean[8][8];
         canArmyAttack = new boolean[8][8];
         storeIndexOfChackedKing = new int[2];
         storeIndexOfChackedKing[0]=storeIndexOfChackedKing[1]=-1;
 
-        mainPane = new StackPane();
         chessBord = new GridPane();
         oneBox = new StackPane[8][8];
         texts = new Text[8][8];
@@ -161,10 +176,11 @@ public class Chess extends Application{
             for(int j = 0 ; j<8 ; j++)
             {
                 oneBox[i][j] = new StackPane();
-                oneBox[i][j].setMaxHeight(100);
-                oneBox[i][j].setMaxWidth(100);
+                oneBox[i][j].setMinHeight(100);
+                oneBox[i][j].setMinWidth(100);
 
                 Rectangle box = new Rectangle(100, 100);
+                box.setStyle("-fx-background-radius :100;");
                 texts[i][j] = new Text();
                 texts[i][j].setFont(Font.font(50));
                 texts[i][j].setOpacity(0.7);
@@ -237,11 +253,14 @@ public class Chess extends Application{
             texts[6][i].setText("♙");
         }
         
-        mainPane.getChildren().addAll(chessBord,result,hBox,soundContainerVeiw);
-        scene = new Scene(mainPane,800,800);
-        newStage.setScene(scene);
-        newStage.show();
+        rootPane.getChildren().addAll(chessBord,result,hBox,soundContainerVeiw);
 
+        chessBord.setRotationAxis(Rotate.Y_AXIS);
+        chessBord.setRotate(270);
+        RotateTransition rotateTransition = new RotateTransition(Duration.millis(500),chessBord);
+        rotateTransition.setByAngle(90); 
+        rotateTransition.setAxis(Rotate.Y_AXIS);
+        rotateTransition.play();
         
 
         for(int i=0; i<2 ; i++)
@@ -425,7 +444,6 @@ public class Chess extends Application{
                                         }
                                     }
                                 }
-                                
                             }
                             else
                             {
@@ -774,21 +792,22 @@ public class Chess extends Application{
                     canArmyMove[k+1][l]=true;
                     isContinueGame=true;
                 }
-                if(k==1)
+            }
+            
+            if(k==1)
+            {
+                if(((Text) oneBox[k+2][l].getChildren().get(1)).getText() == "")
                 {
-                    if(((Text) oneBox[k+2][l].getChildren().get(1)).getText() == "")
-                    {
-                        if (saveKing) {                       
-                            armyContainer.push(texts[k][l].getText());
-                            texts[k+2][l].setText(texts[k][l].getText());
-                            texts[k][l].setText("");
-                            move=isThisRightMove(white);
-                            texts[k+2][l].setText("");
-                            texts[k][l].setText(armyContainer.pop());
+                    if (saveKing) {                       
+                        armyContainer.push(texts[k][l].getText());
+                        texts[k+2][l].setText(texts[k][l].getText());
+                        texts[k][l].setText("");
+                        move=isThisRightMove(white);
+                        texts[k+2][l].setText("");
+                        texts[k][l].setText(armyContainer.pop());
 
-                            if (move) {
-                                canArmyMove[k+2][l]=true;
-                            }
+                        if (move) {
+                            canArmyMove[k+2][l]=true;
                         }
                     }
                 }
@@ -1336,6 +1355,7 @@ public class Chess extends Application{
             else
             {
                 ((Text) oneBox[newk][newl].getChildren().get(1)).setText("");
+                oneBox[newk][newl].setDisable(true);
             }
             ((Text) oneBox[k][l].getChildren().get(1)).setText(armyContainer.pop());
             colorClean(false);
@@ -1354,6 +1374,7 @@ public class Chess extends Application{
                 if(moveCkeck(false,false, oppoArmy))
                 {
                     willDath=true;
+                    oneBox[newk][newl].setDisable(true);
                 }
                 texts[newk][newl].setText(armyContainer.pop());
                 texts[k][l].setText(armyContainer.pop());
@@ -1727,20 +1748,21 @@ public class Chess extends Application{
                         canArmyMove[k-1][l]=true;
                         isContinueGame=true;
                     }
-                    if(k==6)
+                }
+
+                if(k==6)
+                {
+                    if(((Text) oneBox[k-2][l].getChildren().get(1)).getText() == "")
                     {
-                        if(((Text) oneBox[k-2][l].getChildren().get(1)).getText() == "")
-                        {
-                            if (saveKing) {
-                                armyContainer.push(texts[k][l].getText());
-                                texts[k-2][l].setText(texts[k][l].getText());
-                                texts[k][l].setText("");
-                                move=isThisRightMove(black);
-                                texts[k-2][l].setText("");
-                                texts[k][l].setText(armyContainer.pop());
-                                if (move) {
-                                    canArmyMove[k-2][l]=true;
-                                }
+                        if (saveKing) {
+                            armyContainer.push(texts[k][l].getText());
+                            texts[k-2][l].setText(texts[k][l].getText());
+                            texts[k][l].setText("");
+                            move=isThisRightMove(black);
+                            texts[k-2][l].setText("");
+                            texts[k][l].setText(armyContainer.pop());
+                            if (move) {
+                                canArmyMove[k-2][l]=true;
                             }
                         }
                     }
@@ -1860,7 +1882,7 @@ public class Chess extends Application{
 
     public void givePowerToPown(final int k ,final int l ,String[] myArmy)
     {
-        mainPane.getChildren().get(2).resize(150, 500);
+        rootPane.getChildren().get(2).resize(150, 500);
         Text queen = new Text(myArmy[4]);
         Text rook = new Text(myArmy[0]);
         Text horse = new Text(myArmy[1]);
@@ -1877,8 +1899,8 @@ public class Chess extends Application{
                     texts[k][l].setText(((Text)arg0.getTarget()).getText());
                     oneBox[k][l].setDisable(true);
                     oneBox[k][l].getChildren().get(1).setOpacity(0.7);
-                    ((HBox)mainPane.getChildren().get(2)).getChildren().clear();
-                    mainPane.getChildren().get(2).resize(0, 0);
+                    ((HBox)rootPane.getChildren().get(2)).getChildren().clear();
+                    rootPane.getChildren().get(2).resize(0, 0);
                     chessBord.setOpacity(1);
                     continueGame=false;
                 }
@@ -1894,11 +1916,12 @@ public class Chess extends Application{
 
     public void gameOver(String[] winArmy)
     {
+        System.out.println("Hello");
         soundPlayer.pause();
-        sound = new Media(new File(spinnerSoundString).toURI().toString());
+        sound = new Media(new File(winnerSound).toURI().toString());
         soundPlayer = new MediaPlayer(sound);
         soundPlayer.play();
-
+        System.out.println("ABC");
         Pane tempPane = new Pane();// for manage scene at end of game
         Button closeButton = new Button("X");
         closeButton.setFont(Font.font(30));
@@ -1925,10 +1948,11 @@ public class Chess extends Application{
         }
         chessBord.setDisable(true);
         chessBord.setOpacity(0.5);
-
-        tempPane.getChildren().addAll(mainPane,closeButton,soundContainerVeiw);
+System.err.println("hi");
+        tempPane.getChildren().addAll(rootPane,closeButton,soundContainerVeiw);
         scene = new Scene(tempPane,800,800);
         currentStage.setScene(scene);
+        currentStage.show();
 
         closeButton.setOnAction(new EventHandler<ActionEvent>() {
             public void handle(ActionEvent arg0){
@@ -1939,6 +1963,7 @@ public class Chess extends Application{
                 new Thread(()->{
                     for(int i=0 ; i<3000 ; i+=100)
                     {
+                        chessBord.setRotationAxis(Rotate.Z_AXIS);
                         chessBord.setRotate(i);
                         try {
                             Thread.sleep(30);
